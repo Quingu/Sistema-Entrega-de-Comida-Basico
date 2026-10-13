@@ -1,0 +1,8 @@
+/target/
+.env
+*.env
+# Config local com possíveis segredos — ver application.properties.example
+src/main/resources/application.properties
+.idea/
+.vscode/
+*.log

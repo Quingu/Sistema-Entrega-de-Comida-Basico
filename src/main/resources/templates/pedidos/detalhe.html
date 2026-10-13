@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head><title>Detalhe do pedido</title></head>
+<body>
+<div th:fragment="content">
+    <a href="/pedidos" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left"></i> Voltar</a>
+    <h2 class="fw-bold mb-3">Pedido <span class="text-muted" th:text="${pedido.id}"></span></h2>
+    <div class="alert alert-success" th:if="${sucesso}" th:text="${sucesso}"></div>
+    <div class="alert alert-danger" th:if="${erro}" th:text="${erro}"></div>
+    <div class="row g-3">
+        <div class="col-md-7">
+            <div class="card shadow-sm mb-3"><div class="card-body">
+                <p><strong>Status:</strong> <span class="badge bg-dark" th:text="${pedido.status}"></span></p>
+                <p><strong>Cliente:</strong> <span th:text="${pedido.clienteId}"></span></p>
+                <p><strong>Responsável:</strong> <span th:text="${pedido.usuarioResponsavel}"></span> em <span th:text="${pedido.dataEntrada}"></span></p>
+                <p><strong>Saída:</strong> <span th:text="${pedido.dataSaida}"></span> por <span th:text="${pedido.responsavelSaida}"></span></p>
+                <table class="table table-sm mt-3">
+                    <thead><tr><th>Produto</th><th>Qtd</th><th>Unit.</th><th>Subtotal</th></tr></thead>
+                    <tbody>
+                        <tr th:each="i : ${pedido.itens}">
+                            <td th:text="${i.nomeProduto}"></td><td th:text="${i.quantidade}"></td>
+                            <td th:text="${'R$ ' + i.precoUnitario}"></td><td th:text="${'R$ ' + i.subtotal}"></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p><strong>Subtotal:</strong> <span th:text="${'R$ ' + pedido.subtotal}"></span></p>
+                <p><strong>Desconto:</strong> <span th:text="${pedido.percentualDesconto + '% (R$ ' + pedido.valorDesconto + ')'}"></span></p>
+                <h4><strong>Total:</strong> <span th:text="${'R$ ' + pedido.totalFinal}"></span></h4>
+                <p th:if="${pedido.justificativaCancelamento}"><strong>Cancelamento:</strong> <span th:text="${pedido.justificativaCancelamento}"></span></p>
+            </div></div>
+            <div class="card shadow-sm"><div class="card-body">
+                <h5>Histórico (auditoria)</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item small" th:each="h : ${historico}">
+                        <span th:text="${h.dataHora}"></span> — <strong th:text="${h.operacao}"></strong>
+                        por <span th:text="${h.usuario}"></span> (<span th:text="${h.perfil}"></span>)
+                        <span th:if="${h.justificativa}" th:text="${' — ' + h.justificativa}"></span>
+                    </li>
+                    <li class="list-group-item text-muted small" th:if="${#lists.isEmpty(historico)}">Sem registros.</li>
+                </ul>
+            </div></div>
+        </div>
+        <div class="col-md-5" sec:authorize="hasRole('GERENTE')">
+            <div class="card shadow-sm mb-3"><div class="card-body">
+                <h5>Avançar status (GERENTE)</h5>
+                <form th:action="@{/pedidos/{id}/status(id=${pedido.id})}" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <select class="form-select mb-2" name="status" required>
+                        <option value="EM_PREPARACAO">EM_PREPARACAO</option>
+                        <option value="PRONTO">PRONTO</option>
+                        <option value="SAIU_PARA_ENTREGA">SAIU_PARA_ENTREGA</option>
+                        <option value="RETIRADO">RETIRADO</option>
+                        <option value="FINALIZADO">FINALIZADO</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm" type="submit">Aplicar transição</button>
+                </form>
+            </div></div>
+            <div class="card shadow-sm mb-3"><div class="card-body">
+                <h5>Desconto até 20% (GERENTE)</h5>
+                <form th:action="@{/pedidos/{id}/desconto(id=${pedido.id})}" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <input type="number" class="form-control mb-2" name="percentual" min="0" max="20" step="0.01" placeholder="Ex: 10.00" required/>
+                    <button class="btn btn-warning btn-sm" type="submit">Aplicar desconto</button>
+                </form>
+            </div></div>
+            <div class="card shadow-sm"><div class="card-body">
+                <h5>Cancelar (GERENTE, com justificativa)</h5>
+                <form th:action="@{/pedidos/{id}/cancelar(id=${pedido.id})}" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <textarea class="form-control mb-2" name="justificativa" minlength="5" maxlength="500" placeholder="Motivo (obrigatório)" required></textarea>
+                    <button class="btn btn-danger btn-sm" type="submit" onclick="return confirm('Cancelar este pedido? Ele será preservado.');">Cancelar pedido</button>
+                </form>
+            </div></div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
