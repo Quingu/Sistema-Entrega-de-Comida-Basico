@@ -1,12 +1,16 @@
 package com.umc.pediupatrao.config;
 
+import java.io.IOException;
+
 import com.umc.pediupatrao.service.UsuarioDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,6 +20,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -60,6 +67,7 @@ public class SecurityConfig {
 
                         .requestMatchers("/usuarios/**", "/api/usuarios/**").hasRole("ADMIN")
                         .requestMatchers("/auditoria/**", "/api/auditoria/**").hasAnyRole("ADMIN", "GERENTE")
+                        .requestMatchers("/dashboard", "/api/dashboard/**").hasAnyRole("ADMIN", "GERENTE")
 
                         .requestMatchers(HttpMethod.POST, "/api/produtos/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/produtos/**").hasRole("ADMIN")
@@ -90,9 +98,27 @@ public class SecurityConfig {
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
                 )
-                .exceptionHandling(e -> e.accessDeniedPage("/error?negado"));
+                .exceptionHandling(e -> e.accessDeniedHandler(this::tratarAcessoNegado));
 
         return http.build();
+    }
+
+    /**
+     * Requisições de API recebem 403 em JSON; páginas continuam indo para a tela de erro.
+     * Isso evita que o dashboard receba HTML no lugar do contrato esperado.
+     */
+    private void tratarAcessoNegado(HttpServletRequest request, HttpServletResponse response,
+            AccessDeniedException ex) throws IOException {
+        if (request.getRequestURI().startsWith(request.getContextPath() + "/api/")) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write("{\"erro\":\"Acesso negado.\","
+                    + "\"detalhe\":\"O perfil autenticado não tem permissão para acessar este recurso.\"}");
+            return;
+        }
+        // Encaminha para a página de erro com status 403 (o template mostra "Acesso negado").
+        response.sendError(HttpServletResponse.SC_FORBIDDEN);
     }
 
     @Bean

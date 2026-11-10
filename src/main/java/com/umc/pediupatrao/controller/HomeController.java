@@ -25,6 +25,8 @@ import com.umc.pediupatrao.service.PedidoService;
 import com.umc.pediupatrao.service.ProdutoService;
 import com.umc.pediupatrao.service.UsuarioService;
 
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,8 +53,23 @@ public class HomeController {
         return "layout";
     }
 
+    /**
+     * Página do dashboard administrativo. Os dados são carregados via API
+     * (/api/dashboard/**) pelo JavaScript, mantendo a página desacoplada dos
+     * cálculos e permitindo atualização sem recarregar a tela.
+     */
+    @PreAuthorize("hasAnyRole('ADMIN','GERENTE')")
+    @GetMapping("/dashboard")
+    public String dashboard(Model model) {
+        model.addAttribute("content", "dashboard/index :: content");
+        return "layout";
+    }
+
     @GetMapping("/error")
-    public String error() {
+    public String error(HttpServletRequest request, Model model) {
+        Object codigo = request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
+        int status = codigo instanceof Integer ? (Integer) codigo : 500;
+        model.addAttribute("status", status);
         return "error";
     }
 

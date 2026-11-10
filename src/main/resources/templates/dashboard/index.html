@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard administrativo</title>
+</head>
+<body>
+
+<div th:fragment="content" class="dash" id="dashRoot">
+
+    <!-- Cabeçalho -->
+    <header class="dash-header">
+        <div>
+            <div class="dash-eyebrow"><i class="bi bi-speedometer2"></i> Painel administrativo</div>
+            <h1>Dashboard de vendas</h1>
+            <p>Acompanhe o desempenho da operação, a situação dos pedidos e os produtos que mais saem.</p>
+        </div>
+        <div class="dash-header-actions">
+            <div class="dash-updated">
+                <span class="dash-updated-label">Última atualização</span>
+                <strong id="dashAtualizado">—</strong>
+            </div>
+            <button type="button" class="btn btn-primary" id="dashAtualizar">
+                <i class="bi bi-arrow-clockwise"></i> Atualizar
+            </button>
+        </div>
+    </header>
+
+    <!-- Mensagens de erro / aviso -->
+    <div id="dashAlerta" class="alert d-none" role="alert" aria-live="polite"></div>
+
+    <!-- Filtros -->
+    <section class="card dash-filters" aria-label="Filtros de consulta">
+        <div class="dash-filter-row">
+            <div class="dash-quick" id="dashPeriodosRapidos" role="group" aria-label="Períodos rápidos">
+                <button type="button" class="dash-chip" data-periodo="HOJE">Hoje</button>
+                <button type="button" class="dash-chip" data-periodo="7">7 dias</button>
+                <button type="button" class="dash-chip is-active" data-periodo="30">30 dias</button>
+                <button type="button" class="dash-chip" data-periodo="MES">Este mês</button>
+            </div>
+
+            <div class="dash-field">
+                <label for="dashDataInicio">De</label>
+                <input type="date" class="form-control" id="dashDataInicio">
+            </div>
+            <div class="dash-field">
+                <label for="dashDataFim">Até</label>
+                <input type="date" class="form-control" id="dashDataFim">
+            </div>
+
+            <div class="dash-field dash-status-field">
+                <label id="dashStatusLabel">Status</label>
+                <div class="dropdown">
+                    <button type="button" class="btn btn-outline-secondary dropdown-toggle w-100"
+                            id="dashStatusBotao" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                            aria-expanded="false" aria-labelledby="dashStatusLabel dashStatusBotao">
+                        Todos os status
+                    </button>
+                    <div class="dropdown-menu dash-status-menu" id="dashStatusMenu" aria-labelledby="dashStatusLabel">
+                        <div class="dash-status-menu-head">
+                            <span>Todos os status</span>
+                            <button type="button" class="btn btn-link btn-sm p-0" id="dashStatusTodos">Limpar</button>
+                        </div>
+                        <div id="dashStatusOpcoes"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dash-field">
+                <label for="dashAgrupamento">Agrupar por</label>
+                <select class="form-select" id="dashAgrupamento">
+                    <option value="DIA">Dia</option>
+                    <option value="SEMANA">Semana</option>
+                    <option value="MES">Mês</option>
+                </select>
+            </div>
+
+            <div class="dash-filter-actions">
+                <button type="button" class="btn btn-primary" id="dashAplicar">
+                    <i class="bi bi-funnel"></i> Aplicar
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="dashLimpar">Limpar</button>
+            </div>
+        </div>
+
+        <div class="dash-filter-footer">
+            <label class="dash-switch" for="dashAuto">
+                <input type="checkbox" id="dashAuto">
+                <span class="dash-slider" aria-hidden="true"></span>
+                <span>Atualização automática a cada 60s</span>
+            </label>
+            <span class="dash-periodo-resumo" id="dashPeriodoResumo"></span>
+        </div>
+    </section>
+
+    <!-- Indicadores -->
+    <section class="dash-kpis" aria-label="Indicadores gerais de vendas">
+        <article class="card dash-kpi dash-kpi-primary">
+            <div class="dash-kpi-top">
+                <span class="dash-kpi-icon"><i class="bi bi-currency-dollar"></i></span>
+                <span class="dash-kpi-label">Faturamento</span>
+            </div>
+            <strong class="dash-kpi-value" id="dashFaturamento">—</strong>
+            <div class="dash-kpi-foot">
+                <span class="dash-variation" id="dashFaturamentoVar">—</span>
+                <span class="dash-kpi-hint">vs. período anterior</span>
+            </div>
+        </article>
+
+        <article class="card dash-kpi">
+            <div class="dash-kpi-top">
+                <span class="dash-kpi-icon"><i class="bi bi-receipt"></i></span>
+                <span class="dash-kpi-label">Ticket médio</span>
+            </div>
+            <strong class="dash-kpi-value" id="dashTicketMedio">—</strong>
+            <div class="dash-kpi-foot">
+                <span class="dash-kpi-hint" id="dashTicketHint">por pedido não cancelado</span>
+            </div>
+        </article>
+
+        <article class="card dash-kpi">
+            <div class="dash-kpi-top">
+                <span class="dash-kpi-icon"><i class="bi bi-bag-check"></i></span>
+                <span class="dash-kpi-label">Pedidos</span>
+            </div>
+            <strong class="dash-kpi-value" id="dashPedidos">—</strong>
+            <div class="dash-kpi-foot">
+                <span class="dash-kpi-hint" id="dashPedidosDetalhe">em andamento · finalizados</span>
+            </div>
+        </article>
+
+        <article class="card dash-kpi">
+            <div class="dash-kpi-top">
+                <span class="dash-kpi-icon"><i class="bi bi-box-seam"></i></span>
+                <span class="dash-kpi-label">Itens vendidos</span>
+            </div>
+            <strong class="dash-kpi-value" id="dashItensVendidos">—</strong>
+            <div class="dash-kpi-foot">
+                <span class="dash-kpi-hint" id="dashItensHint">unidades nos pedidos válidos</span>
+            </div>
+        </article>
+
+        <article class="card dash-kpi dash-kpi-danger">
+            <div class="dash-kpi-top">
+                <span class="dash-kpi-icon"><i class="bi bi-x-circle"></i></span>
+                <span class="dash-kpi-label">Cancelamentos</span>
+            </div>
+            <strong class="dash-kpi-value" id="dashCancelamentos">—</strong>
+            <div class="dash-kpi-foot">
+                <span class="dash-kpi-hint" id="dashCancelamentosDetalhe">taxa de cancelamento</span>
+            </div>
+        </article>
+    </section>
+
+    <!-- Gráficos: vendas + situação -->
+    <section class="dash-grid dash-grid-main">
+        <article class="card dash-card">
+            <header class="dash-card-head">
+                <div>
+                    <h2>Evolução das vendas</h2>
+                    <p id="dashVendasSubtitulo">Faturamento e volume de pedidos no período selecionado.</p>
+                </div>
+                <div class="dash-segmented" role="group" aria-label="Métrica do gráfico de vendas">
+                    <button type="button" class="is-active" data-metrica="faturamento">Faturamento</button>
+                    <button type="button" data-metrica="pedidos">Pedidos</button>
+                </div>
+            </header>
+            <div class="dash-chart-wrap dash-chart-vendas">
+                <canvas id="dashChartVendas" aria-label="Gráfico de evolução das vendas" role="img"></canvas>
+                <div class="dash-empty d-none" id="dashVendasEmpty">
+                    <i class="bi bi-bar-chart"></i>
+                    <strong>Nenhuma venda no período</strong>
+                    <span>Altere os filtros para visualizar outro intervalo.</span>
+                </div>
+            </div>
+        </article>
+
+        <article class="card dash-card">
+            <header class="dash-card-head">
+                <div>
+                    <h2>Situação dos pedidos</h2>
+                    <p>Distribuição atual da operação.</p>
+                </div>
+                <span class="dash-pill" id="dashStatusTotal">—</span>
+            </header>
+            <div class="dash-chart-wrap dash-chart-status">
+                <canvas id="dashChartStatus" aria-label="Gráfico de situação dos pedidos" role="img"></canvas>
+                <div class="dash-empty d-none" id="dashStatusEmpty">
+                    <i class="bi bi-pie-chart"></i>
+                    <strong>Sem pedidos</strong>
+                    <span>Não há pedidos para os filtros atuais.</span>
+                </div>
+            </div>
+            <div class="dash-status-legend" id="dashStatusLegenda"></div>
+        </article>
+    </section>
+
+    <!-- Ranking + gráfico de produtos -->
+    <section class="dash-grid dash-grid-secondary">
+        <article class="card dash-card">
+            <header class="dash-card-head">
+                <div>
+                    <h2>Produtos mais vendidos</h2>
+                    <p>Ranking por quantidade vendida no período.</p>
+                </div>
+                <span class="dash-pill" id="dashRankingTotal">—</span>
+            </header>
+            <div class="table-responsive">
+                <table class="table dash-table align-middle mb-0">
+                    <thead>
+                    <tr>
+                        <th scope="col" class="dash-col-pos">#</th>
+                        <th scope="col">Produto</th>
+                        <th scope="col" class="text-end">Qtd.</th>
+                        <th scope="col" class="text-end">Faturamento</th>
+                        <th scope="col" class="dash-col-share">Participação</th>
+                    </tr>
+                    </thead>
+                    <tbody id="dashRankingCorpo">
+                    <tr>
+                        <td colspan="5" class="dash-table-empty">Carregando ranking…</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
+        <article class="card dash-card">
+            <header class="dash-card-head">
+                <div>
+                    <h2>Volume por produto</h2>
+                    <p>Comparativo dos itens mais vendidos.</p>
+                </div>
+            </header>
+            <div class="dash-chart-wrap dash-chart-produtos">
+                <canvas id="dashChartProdutos" aria-label="Gráfico de volume por produto" role="img"></canvas>
+                <div class="dash-empty d-none" id="dashProdutosEmpty">
+                    <i class="bi bi-box"></i>
+                    <strong>Nenhum item vendido</strong>
+                    <span>Não há produtos vendidos no período.</span>
+                </div>
+            </div>
+        </article>
+    </section>
+
+    <!-- Pedidos recentes -->
+    <section class="card dash-card dash-recentes">
+        <header class="dash-card-head">
+            <div>
+                <h2>Pedidos recentes</h2>
+                <p>Últimos pedidos registrados dentro do período filtrado.</p>
+            </div>
+            <a class="btn btn-outline-secondary btn-sm" th:href="@{/pedidos}">
+                Ver todos <i class="bi bi-arrow-right"></i>
+            </a>
+        </header>
+        <div class="table-responsive">
+            <table class="table dash-table align-middle mb-0">
+                <thead>
+                <tr>
+                    <th scope="col">Pedido</th>
+                    <th scope="col">Data</th>
+                    <th scope="col">Cliente</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="text-end">Itens</th>
+                    <th scope="col" class="text-end">Total</th>
+                    <th scope="col" class="text-end">Ação</th>
+                </tr>
+                </thead>
+                <tbody id="dashRecentesCorpo">
+                <tr>
+                    <td colspan="7" class="dash-table-empty">Carregando pedidos…</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</div>
+
+</body>
+</html>
