@@ -1,0 +1,304 @@
+{
+  "info": {
+    "name": "Pediu Patrão — Dashboard Administrativo",
+    "description": "Coleção de evidências da API do dashboard. Execute primeiro '00 - Abrir login e obter CSRF' e depois '01 - Login'. As requisições seguintes usam o cookie de sessão mantido pelo Postman.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "username", "value": "gerente" },
+    { "key": "password", "value": "gerente123" },
+    { "key": "csrf", "value": "" },
+    { "key": "dataInicio", "value": "2026-09-01" },
+    { "key": "dataFim", "value": "2026-11-10" }
+  ],
+  "item": [
+    {
+      "name": "Autenticação",
+      "item": [
+        {
+          "name": "00 - Abrir login e obter CSRF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login acessível', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.text();",
+                  "const match = body.match(/name=\"_csrf\"[^>]*value=\"([^\"]+)\"/) || body.match(/value=\"([^\"]+)\"[^>]*name=\"_csrf\"/);",
+                  "pm.test('Token CSRF encontrado', () => pm.expect(match).to.not.equal(null));",
+                  "if (match) { pm.collectionVariables.set('csrf', match[1]); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["login"]
+            }
+          }
+        },
+        {
+          "name": "01 - Login GERENTE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login sem erro', () => pm.expect(pm.response.code).to.be.oneOf([200, 302]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "username", "value": "{{username}}" },
+                { "key": "password", "value": "{{password}}" },
+                { "key": "_csrf", "value": "{{csrf}}" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "RF01 - Resumo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Contrato do resumo', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j).to.have.property('faturamentoTotal');",
+                  "  pm.expect(j).to.have.property('ticketMedio');",
+                  "  pm.expect(j).to.have.property('totalPedidos');",
+                  "  pm.expect(j).to.have.property('taxaCancelamento');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/resumo?dataInicio={{dataInicio}}&dataFim={{dataFim}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "resumo"],
+              "query": [
+                { "key": "dataInicio", "value": "{{dataInicio}}" },
+                { "key": "dataFim", "value": "{{dataFim}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "RF02 - Vendas por período",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Série preenchida', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.pontos).to.be.an('array').that.is.not.empty;",
+                  "  pm.expect(j).to.have.property('agrupamento');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/vendas?dataInicio={{dataInicio}}&dataFim={{dataFim}}&agrupamento=SEMANA",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "vendas"],
+              "query": [
+                { "key": "dataInicio", "value": "{{dataInicio}}" },
+                { "key": "dataFim", "value": "{{dataFim}}" },
+                { "key": "agrupamento", "value": "SEMANA" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "RF03 - Situação dos pedidos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Sete status retornados', () => {",
+                  "  pm.expect(pm.response.json().status).to.have.lengthOf(7);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/status?dataInicio={{dataInicio}}&dataFim={{dataFim}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "status"],
+              "query": [
+                { "key": "dataInicio", "value": "{{dataInicio}}" },
+                { "key": "dataFim", "value": "{{dataFim}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "RF04 - Produtos mais vendidos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Ranking com posições', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.produtos).to.be.an('array');",
+                  "  if (j.produtos.length > 0) { pm.expect(j.produtos[0]).to.have.property('posicao', 1); }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/produtos-mais-vendidos?dataInicio={{dataInicio}}&dataFim={{dataFim}}&limite=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "produtos-mais-vendidos"],
+              "query": [
+                { "key": "dataInicio", "value": "{{dataInicio}}" },
+                { "key": "dataFim", "value": "{{dataFim}}" },
+                { "key": "limite", "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "RF05 - Metadados dos filtros",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Opções de filtro', () => {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.status).to.have.lengthOf(7);",
+                  "  pm.expect(j.agrupamentos).to.have.lengthOf(3);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/filtros",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "filtros"]
+            }
+          }
+        },
+        {
+          "name": "RF07 - Pedidos recentes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Lista de pedidos', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/pedidos-recentes?dataInicio={{dataInicio}}&dataFim={{dataFim}}&limite=8",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "pedidos-recentes"],
+              "query": [
+                { "key": "dataInicio", "value": "{{dataInicio}}" },
+                { "key": "dataFim", "value": "{{dataFim}}" },
+                { "key": "limite", "value": "8" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Erro 400 - Período invertido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Mensagem de validação', () => {",
+                  "  pm.expect(pm.response.json().detalhe).to.contain('posterior');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/resumo?dataInicio=2026-11-10&dataFim=2026-11-01",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "resumo"],
+              "query": [
+                { "key": "dataInicio", "value": "2026-11-10" },
+                { "key": "dataFim", "value": "2026-11-01" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
