@@ -1,0 +1,22 @@
+# ------------------------------------------------------------------
+# Pediu Patrão — configuração de exemplo
+# Copie para application.properties e ajuste os valores locais.
+# O arquivo application.properties é ignorado pelo Git por conter segredos.
+# ------------------------------------------------------------------
+spring.application.name=pediupatrao
+
+# MongoDB (Atlas ou local). Também é possível usar as variáveis MONGODB_URI e MONGODB_DATABASE.
+spring.data.mongodb.uri=${MONGODB_URI:mongodb://localhost:27017/pizzaria}
+spring.data.mongodb.database=${MONGODB_DATABASE:pizzaria}
+
+server.port=${PORT:8080}
+
+# Usuários de demonstração (admin/admin123, gerente/gerente123, atendente/atendente123)
+app.demo-users.enabled=${DEMO_USERS:true}
+app.demo-users.admin-password=${DEMO_ADMIN_PASSWORD:admin123}
+app.demo-users.gerente-password=${DEMO_GERENTE_PASSWORD:gerente123}
+app.demo-users.atendente-password=${DEMO_ATENDENTE_PASSWORD:atendente123}
+
+# Cria clientes e ~60 dias de pedidos apenas quando a coleção pedidos está vazia.
+# Defina DEMO_DATA=false para iniciar com o banco limpo.
+app.demo-data.enabled=${DEMO_DATA:true}
