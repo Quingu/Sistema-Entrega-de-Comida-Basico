@@ -2,9 +2,10 @@
 
 ## Execução
 ```powershell
-# 1) Configure o MongoDB via ambiente
+# 1) Configure o MongoDB via ambiente (veja application.properties.example)
 $env:MONGODB_URI="mongodb+srv://<usuario>:<senha>@<cluster>/..."
 $env:MONGODB_DATABASE="pizzaria"
+$env:DEMO_DATA="true"   # opcional: popula dados demo se o banco estiver vazio
 
 # 2) Rode com JDK 21+
 $env:JAVA_HOME="C:\Program Files\JetBrains\IntelliJ IDEA 2026.2.3\jbr"
@@ -21,6 +22,60 @@ App: `http://localhost:8080` · Login em `/login` · Logout via POST `/logout` (
 | `atendente` | `atendente123` | ATENDENTE |
 
 `USER` foi removido. `UsuarioDetailsService` usa o perfil realmente salvo (`ROLE_ADMIN/GERENTE/ATENDENTE`).
+
+## Dashboard administrativo
+
+Painel somente leitura para **ADMIN** e **GERENTE** em `http://localhost:8080/dashboard`, com dados
+agregados no servidor a partir dos pedidos do MongoDB.
+
+| Requisito | Entrega |
+|---|---|
+| RF01 indicadores | Faturamento total/finalizado, ticket médio, pedidos por situação, taxa de cancelamento, itens vendidos e variação vs. período anterior |
+| RF02 gráficos | Série por `DIA`, `SEMANA` ou `MES`, com alternância entre faturamento e pedidos |
+| RF03 situação | Distribuição por status (rosca + legenda com quantidade e valor) |
+| RF04 ranking | Top produtos por quantidade, com faturamento e participação |
+| RF05 filtros | Período, status, agrupamento e limite; atalhos Hoje/7/30/Este mês; estado na URL |
+| RF06 API | Seis endpoints `GET /api/dashboard/**` consumidos via `fetch` |
+| RF07 atualização | Botão Atualizar, auto-refresh de 60 s (pausa em aba oculta) e estados de erro/vazio/sessão expirada |
+
+### Endpoints
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/api/dashboard/resumo` | Indicadores gerais |
+| GET | `/api/dashboard/vendas` | Série de vendas (`agrupamento=DIA\|SEMANA\|MES`) |
+| GET | `/api/dashboard/status` | Situação dos pedidos |
+| GET | `/api/dashboard/produtos-mais-vendidos` | Ranking (`limite` 1–50) |
+| GET | `/api/dashboard/pedidos-recentes` | Últimos pedidos (`limite` 1–50) |
+| GET | `/api/dashboard/filtros` | Datas limites e opções para a interface |
+
+Parâmetros comuns: `dataInicio`, `dataFim` (`yyyy-MM-dd`), `status` (CSV), `agrupamento` e `limite`.
+O período padrão é de 30 dias e o máximo é de 731 dias. Pedidos `CANCELADO` não entram em
+faturamento, ticket médio, série nem ranking, mas continuam visíveis na situação dos pedidos.
+Contrato completo, exemplos e erros em [`docs/API.md`](docs/API.md).
+
+### Configuração
+
+```properties
+# src/main/resources/application.properties (ignorado pelo Git; use o exemplo)
+spring.data.mongodb.uri=${MONGODB_URI:mongodb://127.0.0.1:27017/pizzaria_dashboard}
+app.demo-data.enabled=${DEMO_DATA:true}
+```
+
+- `application.properties.example` documenta todas as chaves; use `DEMO_DATA=false` para iniciar
+  com o banco limpo.
+- Com `DEMO_DATA=true`, usuários, produtos, clientes e ~60 dias de pedidos são criados **apenas
+  quando as coleções estão vazias**.
+
+### Documentação e evidências
+
+- [`docs/REQUISITOS.md`](docs/REQUISITOS.md) — requisitos funcionais/não funcionais e critérios de aceite.
+- [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) — arquitetura, fluxo de dados, índices e GitFlow.
+- [`docs/API.md`](docs/API.md) — contrato dos endpoints.
+- [`docs/TESTES.md`](docs/TESTES.md) — matriz de testes e resultados.
+- [`docs/evidencias/`](docs/evidencias/) — respostas reais (200/400/403) geradas por
+  `scripts/evidencias-api.ps1`.
+- [`docs/postman/`](docs/postman/) — coleção para importar no Postman.
 
 ## Decisões de segurança
 - **Cadastro público de usuários FECHADO**: `POST /api/usuarios` e `/usuarios/**` exigem `ADMIN`. Sem isso qualquer visitante virava admin.
@@ -58,5 +113,6 @@ App: `http://localhost:8080` · Login em `/login` · Logout via POST `/logout` (
 5. Desconto/cancel só GERENTE, limites e justificativa, pedido preservado. ✔
 6. Auditoria persistente, só consulta ADMIN/GERENTE, sem credenciais. ✔
 7. Telas novas (`pedidos/novo`, `pedidos/detalhe`, `auditoria/lista`), CSRF em cada POST, erros claros, `sec:authorize` só como complemento. ✔
-8. Testes: `PedidoServiceTest` (6), `SegurancaPedidoTest` (5: ATENDENTE e ADMIN barrados), `AuditoriaClienteTest` (2). ✔
-6. Consulta da auditoria como GERENTE/ADMIN (criação, status, desconto, cancel, cliente). ✔
+8. Testes: `PedidoServiceTest` (15), `SegurancaPedidoTest` (8), `AuditoriaClienteTest` (4), `DashboardServiceTest` (14), `DashboardControllerTest` (5), `DashboardSecurityTest` (4) — 50 testes, todos passando. ✔
+9. Consulta da auditoria como GERENTE/ADMIN (criação, status, desconto, cancel, cliente). ✔
+10. Dashboard administrativo (RF01–RF07): API própria, agregações no servidor, filtros, gráficos, auto-refresh e evidências versionadas. ✔
