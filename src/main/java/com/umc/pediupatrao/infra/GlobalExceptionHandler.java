@@ -5,11 +5,17 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import jakarta.validation.ConstraintViolationException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -41,6 +47,34 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> ilegal(IllegalArgumentException e) {
+        return erro(HttpStatus.BAD_REQUEST, "Requisição inválida.", e.getMessage());
+    }
+
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<Map<String, Object>> bindingInvalido(BindException e) {
+        Map<String, String> campos = new HashMap<>();
+        for (FieldError f : e.getBindingResult().getFieldErrors()) {
+            campos.put(f.getField(), f.getDefaultMessage());
+        }
+        Map<String, Object> body = new HashMap<>();
+        body.put("erro", "Parâmetros inválidos.");
+        body.put("detalhes", campos);
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> tipoInvalido(MethodArgumentTypeMismatchException e) {
+        String esperado = e.getRequiredType() == null ? "valor válido" : e.getRequiredType().getSimpleName();
+        return erro(HttpStatus.BAD_REQUEST, "Parâmetro inválido.",
+                "O parâmetro '" + e.getName() + "' deve ser um " + esperado + ".");
+    }
+
+    @ExceptionHandler({
+            MissingServletRequestParameterException.class,
+            HttpMessageNotReadableException.class,
+            ConstraintViolationException.class
+    })
+    public ResponseEntity<Map<String, Object>> requisicaoInvalida(Exception e) {
         return erro(HttpStatus.BAD_REQUEST, "Requisição inválida.", e.getMessage());
     }
 

@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import lombok.Getter;
@@ -27,10 +28,15 @@ public class Pedido {
     private BigDecimal valorDesconto = BigDecimal.ZERO;
     private BigDecimal totalFinal = BigDecimal.ZERO;
 
+    @Indexed
     private StatusPedido status = StatusPedido.RECEBIDO;
 
     private String usuarioResponsavel;
+
+    /** Índice usado pelos filtros de período do dashboard. */
+    @Indexed
     private LocalDateTime dataEntrada;
+
     private LocalDateTime dataSaida;
     private String responsavelSaida;
     private String justificativaCancelamento;
